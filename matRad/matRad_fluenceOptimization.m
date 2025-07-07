@@ -442,6 +442,8 @@ switch pln.propOpt.optimizer
         optimizer = matRad_OptimizerFmincon;
     case 'simulannealbnd'
         optimizer = matRad_OptimizerSimulannealbnd;
+    case 'PGD_GPU'
+        optimizer = matRad_OptimizerPGD_GPU;
     otherwise
         warning(['Optimizer ''' pln.propOpt.optimizer ''' not known! Fallback to IPOPT!']);
         optimizer = matRad_OptimizerIPOPT;

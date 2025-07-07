@@ -26,7 +26,7 @@ matRad_rc; %If this throws an error, run it from the parent directory first to s
 
 %% Patient Data Import
 % import the head & neck patient into your workspace.
-load('HEAD_AND_NECK.mat');
+load('ANON82686.mat');
 
 %% Treatment Plan
 % The next step is to define your treatment plan labeled as 'pln'. This 
@@ -45,6 +45,7 @@ pln.propStf.isoCenter       = ones(pln.propStf.numOfBeams,1) * matRad_getIsoCent
 
 pln.bioModel = 'none'; 
 pln.multScen = 'nomScen';
+pln.propStf.continuousAperture  = false;
 
 % dose calculation settings
 pln.propDoseCalc.doseGrid.resolution.x = 3; % [mm]
@@ -84,7 +85,6 @@ dij = matRad_calcDoseInfluence(ct,cst,stf,pln);
 % treatment. Once the optimization has finished, trigger once the GUI to
 % visualize the optimized dose cubes.
 resultGUI = matRad_fluenceOptimization(dij,cst,pln);
-matRadGUI;
 
 %% Sequencing
 % This is a multileaf collimator leaf sequencing algorithm that is used in 
@@ -97,6 +97,7 @@ resultGUI = matRad_sequencing(resultGUI,stf,dij,pln);
 % The Direct Aperture Optimization is an optimization approach where we 
 % directly optimize aperture shapes and weights.
 resultGUI = matRad_directApertureOptimization(dij,cst,resultGUI.apertureInfo,resultGUI,pln);
+matRadGUI;
 
 %% Aperture visualization
 % Use a matrad function to visualize the resulting aperture shapes

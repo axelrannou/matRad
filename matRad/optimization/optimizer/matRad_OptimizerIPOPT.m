@@ -23,6 +23,7 @@ classdef matRad_OptimizerIPOPT < matRad_Optimizer
 
         %Visualization
         showPlot = true;
+        realtimeUpdate = false; % New property to control real-time plot updates
     end
 
     properties (SetAccess = protected)
@@ -51,6 +52,9 @@ classdef matRad_OptimizerIPOPT < matRad_Optimizer
             obj.axesHandle = [];
             obj.allObjectiveFunctionValues = [];
             obj.abortRequested = false;
+
+            % Initialize realtimeUpdate based on configuration
+            obj.realtimeUpdate = false; % Default to false to disable real-time updates
 
             %Set Default Options
             if matRad_cfg.logLevel <= 1
@@ -83,7 +87,7 @@ classdef matRad_OptimizerIPOPT < matRad_Optimizer
             obj.options.acceptable_obj_change_tol     = 1e-4; % (Acc6), Solved To Acceptable Level if (Acc1),...,(Acc6) fullfiled
 
             obj.options.max_iter                      = matRad_cfg.defaults.propOpt.maxIter;
-            obj.options.max_cpu_time                  = 7200;
+            obj.options.max_cpu_time                  = 36000;
 
             % Barrier Parameter (C.6)
             obj.options.mu_strategy = 'adaptive';
@@ -178,6 +182,17 @@ classdef matRad_OptimizerIPOPT < matRad_Optimizer
             % Run IPOPT.
             try
                 [obj.wResult, obj.resultInfo] = ipopt(double(w0),funcs,ipoptStruct);
+
+                % After optimization is complete, show the final plot if enabled
+                if obj.showPlot && ~obj.plotFailed && ~obj.realtimeUpdate
+                    try
+                        obj.plotFinalFunction();
+                    catch ME
+                        matRad_cfg = MatRad_Config.instance();
+                    matRad_cfg = MatRad_Config.instance();
+                        matRad_cfg.dispWarning('Final objective function plotting failed. Message:\n%s', ME.message);
+                    end
+                end
             catch ME
                 errorString = [ME.message '\nThis error was thrown by the MEX-interface of IPOPT.\nMex interfaces can raise compatability issues which may be resolved by compiling them by hand directly on your particular system.'];
                 matRad_cfg.dispError(errorString);
@@ -252,9 +267,9 @@ classdef matRad_OptimizerIPOPT < matRad_Optimizer
         function flag = iterFunc(obj,iter,objective,~,~)
 
             obj.allObjectiveFunctionValues(iter + 1) = objective;
-            %We don't want the optimization to crash because of drawing
-            %errors
-            if obj.showPlot && ~obj.plotFailed
+
+            % Only update plot in real time if realtimeUpdate is true
+            if obj.showPlot && obj.realtimeUpdate && ~obj.plotFailed
                 try
                     obj.plotFunction();
                 catch ME
@@ -326,6 +341,30 @@ classdef matRad_OptimizerIPOPT < matRad_Optimizer
             if ishghandle(hFig)
                 figure(hFig);
             end
+        end
+
+        % Add a new method to plot the final function
+        function plotFinalFunction(obj)
+            % Plot objective function output at the end of optimization
+            y = obj.allObjectiveFunctionValues;
+            x = 1:numel(y);
+
+            matRad_cfg = MatRad_Config.instance();
+            hFig = figure('Name','Optimization Progress (Final)','NumberTitle','off','Color',matRad_cfg.gui.backgroundColor);
+            hAx = axes(hFig,'Color',matRad_cfg.gui.elementColor,'XColor',matRad_cfg.gui.textColor,'YColor',matRad_cfg.gui.textColor,'GridColor',matRad_cfg.gui.textColor,'MinorGridColor',matRad_cfg.gui.backgroundColor);
+
+            hold(hAx,'on');
+            grid(hAx,'on');
+            grid(hAx,'minor');
+            set(hAx,'YScale','log');
+
+            % Set up the axes scaling & labels
+            defaultFontSize = 14;
+            title(hAx,'Progress of Optimization','LineWidth',defaultFontSize,'Color',matRad_cfg.gui.highlightColor);
+            xlabel(hAx,'# iterations','Fontsize',defaultFontSize),ylabel(hAx,'objective function value','Fontsize',defaultFontSize);
+
+            % Plot the data
+            plot(hAx,x,y,'x-','MarkerEdgeColor',matRad_cfg.gui.highlightColor,'MarkerFaceColor',matRad_cfg.gui.elementColor,'LineWidth',1.5);
         end
 
         function abortCallbackKey(obj,~,KeyEvent)

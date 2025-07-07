@@ -240,7 +240,7 @@ classdef MatRad_Config < handle
                       
             %Optimization Options
             obj.defaults.propOpt.optimizer = 'IPOPT';
-            obj.defaults.propOpt.maxIter = 500;
+            obj.defaults.propOpt.maxIter = 100000;
             obj.defaults.propOpt.runDAO = 0;
             obj.defaults.propOpt.clearUnusedVoxels = false;
 

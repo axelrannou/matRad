@@ -64,14 +64,14 @@ pln.propDoseCalc.doseGrid.resolution.y = 5; % [mm]
 pln.propDoseCalc.doseGrid.resolution.z = 5; % [mm]
 
 % sequencing settings
-pln.propSeq.runSequencing   = true;  % true: run sequencing, false: don't / will be ignored for particles and also triggered by runDAO below
+pln.propSeq.runSequencing   = false;  % true: run sequencing, false: don't / will be ignored for particles and also triggered by runDAO below
 pln.propSeq.sequencer       = 'siochi';
 pln.propSeq.numLevels       = 7;
 
 % optimization settings
 pln.propOpt.quantityOpt         = 'physicalDose';   % Quantity to optimizer (could also be RBExDose, BED, effect)
 pln.propOpt.optimizer           = 'IPOPT';          % We can also utilize 'fmincon' from Matlab's optimization toolbox
-pln.propOpt.runDAO              = true;             % 1/true: run DAO, 0/false: don't / will be ignored for particles
+pln.propOpt.runDAO              = false;             % 1/true: run DAO, 0/false: don't / will be ignored for particles
 pln.propOpt.runVMAT             = true;
 pln.propOpt.preconditioner      = true;
 
