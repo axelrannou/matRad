@@ -56,6 +56,7 @@ beamInfo(dij.numOfBeams+1).logIx  = true(size(resultGUI.w,1),1);
 %% Physical Dose
 doseFields = {'physicalDose','doseToWater'};
 doseQuantities = {'','_std','_batchStd'};
+computePerBeam = false; % Set to true only if you need per-beam cubes
 % compute physical dose for all beams individually and together
 for j = 1:length(doseFields)
     for k = 1:length(doseQuantities)
@@ -63,14 +64,24 @@ for j = 1:length(doseFields)
         if isfield(dij,[doseFields{j} doseQuantities{k}])
             % Handle standard deviation fields and add quadratically
             if ~isempty(strfind(lower(doseQuantities{1}),'std'))
-                for i = 1:length(beamInfo)
-                    resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]) = sqrt(reshape(full(dij.([doseFields{j} doseQuantities{k}]){scenNum}.^2 * (resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions));
-                    resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix])(isnan(resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]))) = 0;
+                if computePerBeam
+                    for i = 1:length(beamInfo)
+                        resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]) = sqrt(reshape(full(dij.([doseFields{j} doseQuantities{k}]){scenNum}.^2 * (resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions));
+                        resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix])(isnan(resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]))) = 0;
+                    end
+                else
+                    % Only compute total dose
+                    resultGUI.([doseFields{j}, doseQuantities{k}]) = sqrt(reshape(full(dij.([doseFields{j} doseQuantities{k}]){scenNum}.^2 * resultGUI.w),dij.doseGrid.dimensions));
                 end
             % Handle normal fields as usual
             else
-                for i = 1:length(beamInfo)
-                    resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]) = reshape(full(dij.([doseFields{j} doseQuantities{k}]){scenNum} * (resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions);
+                if computePerBeam
+                    for i = 1:length(beamInfo)
+                        resultGUI.([doseFields{j}, doseQuantities{k}, beamInfo(i).suffix]) = reshape(full(dij.([doseFields{j} doseQuantities{k}]){scenNum} * (resultGUI.w .* beamInfo(i).logIx)),dij.doseGrid.dimensions);
+                    end
+                else
+                    % Only compute total dose
+                    resultGUI.([doseFields{j}, doseQuantities{k}]) = reshape(full(dij.([doseFields{j} doseQuantities{k}]){scenNum} * resultGUI.w), dij.doseGrid.dimensions);
                 end
             end
         end

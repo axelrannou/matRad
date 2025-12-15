@@ -24,7 +24,8 @@ addpath(genpath('..'));
 % Load ANON82686 patient data
 matRad_cfg = matRad_rc; %If this throws an error, run it from the parent directory first to set the paths
 %load('jane_doe.mat');
-load('john_doe.mat');
+%load('john_doe.mat');
+load('john_doe_lung.mat')
 
 fprintf('Patient data loaded successfully!\n');
 
@@ -304,3 +305,61 @@ if exist('qi', 'var') && isstruct(qi)
 end
 
 fprintf('\nPatient analysis complete!\n');
+
+%% Display dose slices with CT overlay using matRad plotting functions
+fprintf('Creating enhanced dose slice visualizations using matRad functions...\n');
+
+% Create a new figure for dose slices
+figure('Name', 'Dose Distribution with CT', 'Position', [50, 50, 1200, 1000]);
+
+% Get dose dimensions
+[nx, ny, nz] = size(resultGUI.physicalDose);
+
+% Calculate middle slices - only need axial
+slices = struct('axial', round(nz-100));
+plane = 3; % axial only
+slice = slices.axial;
+
+% Get colormap settings
+doseColorMap = jet(64);
+ctColorMap = bone(64);
+
+% Define dose display parameters
+doseThreshold = 0.1; % 10% threshold
+doseAlpha = 0.6;
+doseWindow = [0 max(resultGUI.physicalDose(:))];
+
+% Define which structures to display (all visible ones)
+voiSelection = true(size(cst,1), 1);
+for i = 1:size(cst, 1)
+    if strcmp(cst{i,3}, 'IGNORED')
+        voiSelection(i) = false;
+    end
+end
+
+% Plot axial view only
+ax = gca;
+
+% Use matRad's wrapper function to plot everything
+try
+    [~, ~, ~, ~, ~] = matRad_plotSliceWrapper(ax, ct, cst, 1, resultGUI.physicalDose, ...
+        plane, slice, doseThreshold, doseAlpha, [], doseColorMap, doseWindow, [], ...
+        voiSelection, 'Dose [Gy]', false);
+    
+    title(sprintf('Axial View (Slice %d/%d)', slice, size(resultGUI.physicalDose, plane)), ...
+        'FontSize', 14, 'FontWeight', 'bold');
+catch ME
+    % Fallback to simple visualization if matRad functions fail
+    warning('Could not use matRad plotting functions: %s', ME.message);
+    
+    doseSlice = resultGUI.physicalDose(:, :, slice)';
+    
+    imagesc(doseSlice);
+    colormap(ax, jet);
+    colorbar;
+    title(sprintf('Axial View (Slice %d/%d)', slice, size(resultGUI.physicalDose, plane)));
+    axis equal tight;
+end
+
+fprintf('Dose slice visualization complete!\n');
+%matRadGUI;

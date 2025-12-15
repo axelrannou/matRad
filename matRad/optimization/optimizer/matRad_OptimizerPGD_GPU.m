@@ -29,13 +29,13 @@ classdef matRad_OptimizerPGD_GPU < matRad_Optimizer
         stepSize = 0.1;           % Initial step size
         adaptiveStepSize = true;  % Adaptive step size adjustment
         stepSizeReduction = 0.5;  % Factor for step size reduction
-        minStepSize = 1e-6;       % Minimum step size
+        minStepSize = 1e-10;       % Minimum step size
         maxFluence = 10.0;        % Maximum allowed fluence value
         
         % Convergence criteria
         relTolGrad = 1e-4;        % Relative gradient tolerance
         relTolObj = 1e-6;         % Relative objective tolerance
-        maxIter = 2000;           % Maximum iterations
+        maxIter = 1000;           % Maximum iterations
         
         % GPU arrays for persistent storage
         dij_gpu = [];
@@ -90,6 +90,13 @@ classdef matRad_OptimizerPGD_GPU < matRad_Optimizer
             % Main optimization routine (required by matRad_Optimizer interface)
             
             matRad_cfg = MatRad_Config.instance();
+
+            % User-configurable step size
+            if isfield(optiProb, 'stepSize') && ~isempty(optiProb.stepSize)
+                obj.stepSize = optiProb.stepSize;
+            elseif isfield(optiProb, 'propOpt') && isfield(optiProb.propOpt, 'stepSize') && ~isempty(optiProb.propOpt.stepSize)
+                obj.stepSize = optiProb.propOpt.stepSize;
+            end
             
             % Initialize result info
             obj.resultInfo = struct();
@@ -199,8 +206,9 @@ classdef matRad_OptimizerPGD_GPU < matRad_Optimizer
                     if iter > 1 && obj.resultInfo.objectiveHistory(1) > 0
                         improvement = 100 * (obj.resultInfo.objectiveHistory(1) - obj.resultInfo.objectiveHistory(iter)) / obj.resultInfo.objectiveHistory(1);
                     end
-                    matRad_cfg.dispInfo('Iter %3d: Obj = %.6e, Step = %.2e, Improvement = %.2f%% [GPU]\n', ...
-                                      iter, obj.resultInfo.objectiveHistory(iter), gather(step_size), improvement);
+                    grad_norm = gather(norm(grad_gpu));
+                    matRad_cfg.dispInfo('Iter %3d: Obj = %.6e, Step = %.2e, GradNorm = %.2e, Improvement = %.2f%% [GPU]\n', ...
+                        iter, obj.resultInfo.objectiveHistory(iter), gather(step_size), grad_norm, improvement);
                 end
             end
             
