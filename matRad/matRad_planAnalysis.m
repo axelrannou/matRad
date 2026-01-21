@@ -48,7 +48,7 @@ p.addRequired('stf',@isstruct);
 p.addRequired('pln',@isstruct);
 
 % Define optional parameters with default values
-p.addParameter('refGy',[40 50 60],@isnumeric); % Reference dose values for V_XGy calculation
+p.addParameter('refGy',[20 40 50 60],@isnumeric); % Reference dose values for V_XGy calculation
 p.addParameter('refVol',[2 5 95 98],@isnumeric); % Reference volume percentages for D_X calculation
 p.addParameter('showDVH',true,@islogical); % Flag to show or hide the DVH plot
 p.addParameter('showQI',true,@islogical); % Flag to show or hide the Quality Indicators plot

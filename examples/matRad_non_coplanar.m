@@ -170,7 +170,8 @@ pln.numOfFractions  = 30;
 gantryAngles = [0:4:359];
 
 % Define three couch angles for arc planning
-couchAngles = [-5, 0, 5];
+%couchAngles = [-5, 0, 5];
+couchAngles = [-20, -15, -10, -5, 0, 5, 10, 15, 20];
 
 % Create all combinations of gantry and couch angles
 pln.propStf.gantryAngles = [];
@@ -190,12 +191,12 @@ pln.multScen = 'nomScen';
 pln.propStf.continuousAperture = false;
 
 %% Dose grid
-pln.propDoseCalc.doseGrid.resolution.x = 3; % [mm]
-pln.propDoseCalc.doseGrid.resolution.y = 3; % [mm]
-pln.propDoseCalc.doseGrid.resolution.z = 3; % [mm]
+pln.propDoseCalc.doseGrid.resolution.x = 2.5; % [mm]
+pln.propDoseCalc.doseGrid.resolution.y = 2.5; % [mm]
+pln.propDoseCalc.doseGrid.resolution.z = 2.5; % [mm]
 
 % Optimizer settings
-pln.propOpt.optimizer = 'PGD_CPU';
+pln.propOpt.optimizer = 'EclipseBased';
 pln.propOpt.quantityOpt = 'physicalDose';
 pln.propSeq.runSequencing = false;
 pln.propOpt.runDAO = false;
@@ -220,10 +221,18 @@ if exist(dijFile, 'file')
     disp(['Loading precomputed dij from ' dijFile]);
     load(dijFile, 'dij');
 else
-    disp('Calculating dij');
+    disp('Calculating dij using batched method to reduce RAM usage');
     disp('This will take a while but only needs to be done once...');
     tic;
-    dij = matRad_calcDoseInfluence(ct,cst,stf,pln);
+    
+    % Configure memory reduction options
+    dijOptions = struct();
+    dijOptions.useSinglePrecision = true;  % Use single precision (halves memory)
+    dijOptions.doseThreshold = 0.01;       % Remove values < 1% of beamlet max
+    dijOptions.absoluteThreshold = 1e-6;   % Remove very small values
+    
+    % Use batched calculation with 10 beams per batch
+    dij = matRad_calcDoseInfluenceBatched(ct, cst, stf, pln, 10, dijOptions);
     calcTime = toc;
     disp(['Calculation took ' num2str(calcTime/60) ' minutes']);
     save(dijFile, 'dij', '-v7.3');
