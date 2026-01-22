@@ -230,7 +230,10 @@ else
     disp(['Saved dij to ' dijFile]);
 end
 
-%%Final Inverse Planning
+%% Analyze and visualize dij weight distribution
+matRad_plotDijAnalysis(dij, 'Dij Weight Distribution Analysis');
+
+%% Final Inverse Planning
 resultGUI = matRad_fluenceOptimization(dij,cst,pln);
 
 

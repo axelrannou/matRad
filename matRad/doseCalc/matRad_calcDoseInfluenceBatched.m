@@ -1,7 +1,6 @@
 function dij = matRad_calcDoseInfluenceBatched(ct, cst, stf, pln, batchSize, options)
 % matRad_calcDoseInfluenceBatched
 % Calculate dij in batches and build sparse matrix incrementally
-% Saves intermediate results to disk to allow resuming after crash
 % 
 % Input:
 %   ct, cst, stf, pln - standard matRad inputs
@@ -49,16 +48,6 @@ function dij = matRad_calcDoseInfluenceBatched(ct, cst, stf, pln, batchSize, opt
         matRad_cfg.dispInfo('  - Absolute dose threshold: %.2e Gy\n', options.absoluteThreshold);
     end
     
-    % Setup cache directory
-    cacheDir = fullfile(pwd, 'dij_cache');
-    if ~exist(cacheDir, 'dir')
-        mkdir(cacheDir);
-    end
-    
-    % Incremental sparse matrix file
-    incrementalFile = fullfile(cacheDir, 'dij_incremental.mat');
-    progressFile = fullfile(cacheDir, 'dij_progress.mat');
-    
     % First pass: calculate dimensions by processing first beam
     matRad_cfg.dispInfo('Determining matrix dimensions...\n');
     stf_first = stf(1);
@@ -91,46 +80,14 @@ function dij = matRad_calcDoseInfluenceBatched(ct, cst, stf, pln, batchSize, opt
     
     clear dij_first D_first;
     
-    % Check if we can resume from previous progress
-    startBatch = 1;
-    currentBeamlet = 1;
-    
-    if exist(progressFile, 'file') && exist(incrementalFile, 'file')
-        matRad_cfg.dispInfo('Found previous progress, attempting to resume...\n');
-        try
-            prog = load(progressFile);
-            if prog.numBeams == numBeams && prog.totalBeamlets == totalBeamlets
-                startBatch = prog.lastCompletedBatch + 1;
-                currentBeamlet = prog.currentBeamlet;
-                matRad_cfg.dispInfo('Resuming from batch %d (beamlet %d)\n', startBatch, currentBeamlet);
-            else
-                matRad_cfg.dispInfo('Configuration changed, starting fresh\n');
-                delete(incrementalFile);
-                delete(progressFile);
-            end
-        catch
-            matRad_cfg.dispInfo('Could not load progress, starting fresh\n');
-            if exist(incrementalFile, 'file'), delete(incrementalFile); end
-            if exist(progressFile, 'file'), delete(progressFile); end
-        end
-    end
-    
-    % Initialize or load sparse matrix
-    if startBatch == 1
-        D_full = sparse(numVoxels, totalBeamlets);
-        matRad_cfg.dispInfo('Initialized empty sparse matrix\n');
-    else
-        matRad_cfg.dispInfo('Loading existing sparse matrix...\n');
-        loaded = load(incrementalFile, 'D_full');
-        D_full = loaded.D_full;
-        clear loaded;
-        matRad_cfg.dispInfo('Loaded matrix with %d non-zeros\n', nnz(D_full));
-    end
+    % Initialize sparse matrix
+    D_full = sparse(numVoxels, totalBeamlets);
+    matRad_cfg.dispInfo('Initialized empty sparse matrix\n');
     
     % Process beams in batches
     totalBatches = ceil(numBeams / batchSize);
     
-    for batchNum = startBatch:totalBatches
+    for batchNum = 1:totalBatches
         batchStart = (batchNum - 1) * batchSize + 1;
         batchEnd = min(batchNum * batchSize, numBeams);
         batchBeams = batchStart:batchEnd;
@@ -142,9 +99,7 @@ function dij = matRad_calcDoseInfluenceBatched(ct, cst, stf, pln, batchSize, opt
         matRad_cfg.dispInfo('============================================================\n');
         
         % Calculate beamlet offset for this batch
-        if batchNum > 1 || startBatch > 1
-            currentBeamlet = beamletOffset(batchStart);
-        end
+        currentBeamlet = beamletOffset(batchStart);
         
         % Extract stf for this batch
         stf_batch = stf(batchBeams);
@@ -207,23 +162,12 @@ function dij = matRad_calcDoseInfluenceBatched(ct, cst, stf, pln, batchSize, opt
         D_full = D_full + D_batch_global;
         
         numNonZeros = length(batchRows);
-        currentBeamlet = currentBeamlet + size(D_batch, 2);
         
         matRad_cfg.dispInfo('  Batch took %.1f s, added %d non-zeros (total: %d)\n', ...
             batchTime, numNonZeros, nnz(D_full));
         
         % Clear batch data
         clear dij_batch D_batch D_batch_global batchRows batchCols batchVals;
-        
-        % Save progress to disk after each batch
-        matRad_cfg.dispInfo('  Saving progress to disk...\n');
-        save(incrementalFile, 'D_full', '-v7.3');
-        
-        % Save progress marker
-        lastCompletedBatch = batchNum;
-        save(progressFile, 'lastCompletedBatch', 'currentBeamlet', 'numBeams', 'totalBeamlets', 'numVoxels', 'beamletOffset');
-        
-        matRad_cfg.dispInfo('  Progress saved (can resume if interrupted)\n');
         
         % Force garbage collection
         java.lang.System.gc();
@@ -289,11 +233,6 @@ function dij = matRad_calcDoseInfluenceBatched(ct, cst, stf, pln, batchSize, opt
     dij.rayNum = rayNum;
     
     clear dij_ref D_full;
-    
-    % Clean up progress files (keep incremental for potential reuse)
-    if exist(progressFile, 'file')
-        delete(progressFile);
-    end
     
     matRad_cfg.dispInfo('Done!\n');
 end
