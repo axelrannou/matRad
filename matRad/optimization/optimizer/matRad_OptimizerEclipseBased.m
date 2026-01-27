@@ -708,11 +708,14 @@ classdef matRad_OptimizerEclipseBased < matRad_Optimizer
             obj.min_mask    = obj.d_min_cpu > 0;
             obj.max_mask    = obj.d_max_cpu < inf;
             
-            % Set prescription dose for hotspot control (max target dose)
+            % Set prescription dose for hotspot control (max target dose including boosts)
+            % Use the absolute maximum prescribed dose (e.g., GTV boost at 74 Gy, not PTV at 66 Gy)
             target_doses = d_ref(d_ref > 0);
-            if ~isempty(target_doses)
-                obj.prescriptionDose = max(target_doses);
-                matRad_cfg.dispInfo('Prescription dose for hotspot control: %.2f Gy\n', obj.prescriptionDose);
+            min_doses_active = d_min(d_min > 0);
+            all_prescription_doses = [target_doses; min_doses_active];
+            if ~isempty(all_prescription_doses)
+                obj.prescriptionDose = max(all_prescription_doses);
+                matRad_cfg.dispInfo('Prescription dose for hotspot control: %.2f Gy (max across all targets/boosts)\n', obj.prescriptionDose);
                 matRad_cfg.dispInfo('Hotspot threshold: %.1f%% (%.2f Gy)\n', ...
                     obj.hotspotThreshold * 100, obj.prescriptionDose * obj.hotspotThreshold);
             end
